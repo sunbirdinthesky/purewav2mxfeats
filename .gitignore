@@ -1,0 +1,6 @@
+mxnet/
+bin/mxnet/
+labels/*
+output/*
+pure_wav/*
+noise_list_and_rir_list/*
