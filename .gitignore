@@ -1,5 +1,4 @@
 mxnet/
-bin/mxnet/
 labels/*
 output/*
 pure_wav/*

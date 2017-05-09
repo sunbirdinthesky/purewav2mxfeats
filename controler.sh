@@ -1,88 +1,121 @@
 #!/bin/sh
 prefix='reverb'
-isvad=true
+use_final_fml=true
+reply_times=1
+random_seed=777
+num_threads_limit=2
 
 if [ $# != 3]
 then
-    echo "usage: ./controler.sh is_vad dest_dir"
-    echo "  eg : ./controler.sh true hdfs://yz-cpu-vm001.hogpu.cc/user/voice_feats/"
-    echo "is_vad parameter must be gaven, false = not vad, true = is vad"
-    exit -1
+    echo 'usage  : ./controler.sh [options] use_final_fml dest_dir prefix'
+    echo 'eg     : ./controler.sh --reply_times 3 true hdfs://yz-cpu-vm001.hogpu.cc/user/voice_feats/ reverb'
+    echo 'options:  --reply_times: how many times will we calculate the feats, default = 1'
+    echo '          --random_seed: random seed, default = 777'
+    echo '          --num_threads_limit: how many thread to lunch while making mxnet feats, default = 2'
+    echo '                               caution : change this to 3 or biger may cause out of memory error'
+    echo '                                         make sure you know what you are doing'
+    echo '                               notice  : if this value is larger than reply_times'
+    echo '                                         it won`t be effective'
+    echo 'params :  use_final_fml: false = not use(vad and 4621 classes), true = use(2831 classes)'
+    echo '          dest_dir     : where to save feats after all the works finished'
+    echo '                         to save it local, give a local path'
+    echo '                         to save it on hdfs, give a hdfs path(nothing will be saved local)'
+    echo '          prefix       : the prefix of saved feats'
+    exit 1
 fi
 
-isvad=$1
+use_final_fml=$1
 dest_dir=$2
 prefix=$3
 
-./bin/reverberate_data_dir.sh  \
-    --random-seed   12         \
-    --key-prefix    ${prefix}  \
-    pure_wav                   \
-    noise_list_and_rir_list    \
-    output
-
-line_num=`wc output/text -l`
-line_num=${line_num%% *}
-
-line_per_file=`expr ${line_num} / 3`
-head output/spk2utt  -n line_per_file output/head/spk2utt
-head output/utt2spk  -n line_per_file output/head/utt2spk
-head output/text     -n line_per_file output/head/text
-head output/utt2uniq -n line_per_file output/head/utt2uniq
-head output/wav.scp  -n line_per_file output/head/wav.scp
-
-head output/spk2utt  -n `expr ${line_per_file} * 2` | tail -n line_per_file output/mid/spk2utt
-head output/utt2spk  -n `expr ${line_per_file} * 2` | tail -n line_per_file output/mid/utt2spk
-head output/text     -n `expr ${line_per_file} * 2` | tail -n line_per_file output/mid/text
-head output/utt2uniq -n `expr ${line_per_file} * 2` | tail -n line_per_file output/mid/utt2uniq
-head output/wav.scp  -n `expr ${line_per_file} * 2` | tail -n line_per_file output/mid/wav.scp
-
-tail output/spk2utt  -n line_per_file output/tail/spk2utt
-tail output/utt2spk  -n line_per_file output/tail/utt2spk
-tail output/text     -n line_per_file output/tail/text
-tail output/utt2uniq -n line_per_file output/tail/utt2uniq
-tail output/wav.scp  -n line_per_file output/tail/wav.scp
-#/bin/rm output/*
-
-./conv_labels.py --prefix ${prefix}
-steps/make_fbank.sh                                 \
-    --fbank-config  conf/fbank.conf                 \
-    --nj            8                               \
-    --cmd           "run.pl --max-jobs-run 8"       \
-    outout/head > make_fbank_h.log &
-steps/make_fbank.sh                                 \
-    --fbank-config  conf/fbank.conf                 \
-    --nj            8                               \
-    --cmd           "run.pl --max-jobs-run 8"       \
-    outout/mid  > make_fbank_m.log &
-steps/make_fbank.sh                                 \
-    --fbank-config  conf/fbank.conf                 \
-    --nj            8                               \
-    --cmd           "run.pl --max-jobs-run 8"       \
-    outout/tail > make_fbank_t.log &
-wait
-
-if [ ${isvad} == 0 ]
+#clear output dir
+contain=`ls output`
+if [ ${contain} != '' ]
 then
-    hr-combine-ali-feats "ark:gunzip -c ./labels/head/ali.*.gz|ali-to-pdf ./labels/final.mdl ark:- ark,t:-|"    \
-        scp:output/head/feats.scp ark,t:- ark,t:- 2>stderr_h.log |                                              \
-        ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}${prefix}1_ & 
-    hr-combine-ali-feats "ark:gunzip -c ./labels/mid/ali.*.gz|ali-to-pdf  ./labels/final.mdl ark:- ark,t:-|"    \
-        scp:output/mid/feats.scp  ark,t:- ark,t:- 2>stderr_m.log |                                              \
-        ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}${prefix}2_ &
-    wait
-    hr-combine-ali-feats "ark:gunzip -c ./labels/tail/ali.*.gz|ali-to-pdf ./labels/final.mdl ark:- ark,t:-|"    \
-        scp:output/tail/feats.scp ark,t:- ark,t:- 2>stderr_t.log |                                              \
-        ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}${prefix}3_
-else
-    hr-combine-ali-feats "ark:gunzip -c ./labels/head/ali.*.gz|"                                                \
-        scp:output/head/feats.scp ark,t:- ark,t:- 2>stderr_h.log |                                              \
-        ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}${prefix}1_ & 
-    hr-combine-ali-feats "ark:gunzip -c ./labels/mid/ali.*.gz|"                                                 \
-        scp:output/mid/feats.scp  ark,t:- ark,t:- 2>stderr_m.log |                                              \
-        ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}${prefix}2_ &
-    wait
-    hr-combine-ali-feats "ark:gunzip -c ./labels/tail/ali.*.gz|"                                                \
-        scp:output/tail/feats.scp ark,t:- ark,t:- 2>stderr_t.log |                                              \
-        ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}${prefix}3_
+    echo 'output floder not empty, clear it? Input "yes" to clear, or any other things to abort'
+    read result
+    if [ ${result} == 'yes']
+    then
+        /bin/rm -rf output/*
+    else
+        echo 'user canceled the progress, exit now' 
+        exit 1
+    fi
 fi
+
+#calculating disk requirement
+echo 'calculating disk requirement'
+result=`wc pure_wav/wav.scp -l`
+result=`expr ${result} * 20 / 1024 / 1024`
+echo 'This script may cost at most '${result}' GB of disk space (may be even larger)'
+echo 'Are you sure to run this script? Input "yes" to continue, or any other things to abort'
+read result
+if [ ${result} != 'yes']
+then
+    echo 'user canceled the progress, exit now' 
+    exit 1
+fi
+
+#echo make wav.scp
+echo 'calculating wav.scp, this may take lot of time(may be several days)'
+for ((i=1; i<=${reply_times}; i++))
+do
+    mkdir output/${i}
+    ./bin/reverberate_data_dir.sh            \
+        --random-seed       ${random_seed}   \
+        --key-prefix        ${prefix}${i}_   \
+        pure_wav                             \
+        noise_list_and_rir_list              \
+        output/${i} &
+done
+wait
+echo 'finished making wav.scp' 
+
+
+echo 'start making fbank'
+for ((i=1; i<=${reply_times}; i++))
+do
+    steps/make_fbank.sh                                                         \
+        --fbank-config  conf/fbank.conf                                         \
+        --nj            400                                                     \
+        --cmd           "run.pl --max-jobs-run `expr 12 / ${reply_times}`"      \
+        outout/${i} &
+done
+wait
+echo 'finished making fbank' 
+
+
+echo 'start converting labels'
+for ((i=1; i<=${reply_times}; i++))
+do
+    /bin/rm -rf ./labels/${i}
+    mkdir ./labels/${i}
+done
+wait
+echo 'finish converting labels'
+
+
+echo 'start converting mxnet feats'
+echo 'caution : this will cost a lot of memory'
+for ((i=1; i<=${reply_times}; i++))
+do
+    if [ ${use_final_fml} == true ]
+    then
+        ./bin/hr-combine-ali-feats                                                                  \
+            "ark:gunzip -c ./labels/${i}/ali.*.gz|ali-to-pdf ./labels/final.mdl ark:- ark,t:-|"     \
+            scp:output/${i}/feats.scp ark,t:- ark,t:- 2>stderr_${i}.log |                           \
+            ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}/${prefix}${i}_ & 
+    else
+        ./bin/hr-combine-ali-feats                                                                  \
+            "ark:gunzip -c ./labels/${i}/ali.*.gz|"                                                 \
+            scp:output/${i}/feats.scp ark,t:- ark,t:- 2>stderr_${i}.log |                           \
+            ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}/${prefix}${i}_ & 
+    fi
+
+    while [ `jobs|grep -c "\[[0-9]\]"` == num_threads_limit ]
+    do
+        sleep 5
+    done
+done
+wait
+echo "all done, have a nice day ^.^"

@@ -12,7 +12,7 @@ set -e
 random_seed=0
 snrs="20:10:15:5:0"
 random_seed=777
-num_replications=3
+num_replications=1
 foreground_snrs="20:15:10:5:0"
 background_snrs="20:15:10:5:0"
 key_prefix=""
@@ -32,7 +32,7 @@ multi_output=false
 if [ $# != 3 ]; then
   echo "Usage: reverberate_data_dir_speed.sh [options] <src_dir> <impulse-noise-dir> <dest_dir>"
   echo "e.g.:"
-  echo " $0 --random-seed 12 --key-prefix=key_prefix data/train_si284 data_multicondition/impulses_noises data/train_si284p"
+  echo " $0 --random-seed 12 --key-prefix reverb --num_replications 3 ./pure_wav ./noise_and_rir_list ./output"
   exit 1;
 fi
 
