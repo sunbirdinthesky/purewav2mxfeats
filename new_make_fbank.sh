@@ -7,7 +7,7 @@ echo "making fabnk"
 start making fbank
 steps/make_fbank.sh                                 \
     --fbank-config  conf/fbank.conf                 \
-    --nj            400                             \
-    --cmd           "run.pl --max-jobs-run 8"       \
-    ./output_t/ ./output_t/log ./output_t/fbank 
+    --nj            10                             \
+    --cmd           "run.pl --max-jobs-run 10"       \
+    ./pure_wav  
 echo "done"

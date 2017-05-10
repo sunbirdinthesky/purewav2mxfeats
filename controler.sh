@@ -4,19 +4,23 @@ use_final_fml=true
 reply_times=1
 random_seed=777
 num_threads_limit=2
+quiet=false
+. ./utils/parse_options.sh
+. ./path.sh 
 
-if [ $# != 3]
+if [ $# != 3 ]
 then
     echo 'usage  : ./controler.sh [options] use_final_fml dest_dir prefix'
-    echo 'eg     : ./controler.sh --reply_times 3 true hdfs://yz-cpu-vm001.hogpu.cc/user/voice_feats/ reverb'
-    echo 'options:  --reply_times: how many times will we calculate the feats, default = 1'
-    echo '          --random_seed: random seed, default = 777'
-    echo '          --num_threads_limit: how many thread to lunch while making mxnet feats, default = 2'
+    echo 'eg     : ./controler.sh --reply-times 3 true hdfs://yz-cpu-vm001.hogpu.cc/user/voice_feats/ reverb'
+    echo 'options:  --reply-times: how many times will we calculate the feats, default = 1'
+    echo '          --random-seed: random seed, default = 777'
+    echo '          --quiet      : whether clean old data without confirmed or not, default = false'
+    echo '          --num-threads-limit: how many thread to lunch while making mxnet feats, default = 2'
     echo '                               caution : change this to 3 or biger may cause out of memory error'
     echo '                                         make sure you know what you are doing'
     echo '                               notice  : if this value is larger than reply_times'
     echo '                                         it won`t be effective'
-    echo 'params :  use_final_fml: false = not use(vad and 4621 classes), true = use(2831 classes)'
+    echo 'params :  use-final-fml: false = not use(vad and 4621 classes), true = use(2831 classes)'
     echo '          dest_dir     : where to save feats after all the works finished'
     echo '                         to save it local, give a local path'
     echo '                         to save it on hdfs, give a hdfs path(nothing will be saved local)'
@@ -29,13 +33,19 @@ dest_dir=$2
 prefix=$3
 
 #clear output dir
-contain=`ls output`
-if [ ${contain} != '' ]
+contain=`ls output|wc -l`
+res='yes'
+if [ ${contain} != 0 ]
 then
-    echo 'output floder not empty, clear it? Input "yes" to clear, or any other things to abort'
-    read result
-    if [ ${result} == 'yes']
+    if [ ${quiet} == false ]
     then
+        echo 'output floder not empty, clear it? Input "yes" to clear, or any other things to abort'
+        read res
+    fi
+
+    if [ ${res} == 'yes' ]
+    then
+        echo 'user confirmed, continue'
         /bin/rm -rf output/*
     else
         echo 'user canceled the progress, exit now' 
@@ -43,15 +53,25 @@ then
     fi
 fi
 
+
 #calculating disk requirement
 echo 'calculating disk requirement'
-result=`wc pure_wav/wav.scp -l`
-result=`expr ${result} * 20 / 1024 / 1024`
-echo 'This script may cost at most '${result}' GB of disk space (may be even larger)'
-echo 'Are you sure to run this script? Input "yes" to continue, or any other things to abort'
-read result
-if [ ${result} != 'yes']
+useage=`cat pure_wav/text | wc -l`
+useage=`expr ${useage} \* 20 / 1024 / 1024`
+echo 'This script may cost at most '${useage}' GB of tmp files (may be even larger)'
+echo '    and the feats may cost at most '`expr ${useage} \* 3`' GB of disk space'
+echo '    (if your dest_dir is on hdfs, ignore the size of feats)'
+
+if [ ${quiet} == false ]
 then
+    echo 'Are you sure to run this script? Input "yes" to continue, or any other things to abort'
+    read res
+fi
+
+if [ ${res} == 'yes' ]
+then
+    echo 'user confirmed, continue'
+else
     echo 'user canceled the progress, exit now' 
     exit 1
 fi
@@ -77,21 +97,20 @@ for ((i=1; i<=${reply_times}; i++))
 do
     steps/make_fbank.sh                                                         \
         --fbank-config  conf/fbank.conf                                         \
-        --nj            400                                                     \
-        --cmd           "run.pl --max-jobs-run `expr 12 / ${reply_times}`"      \
-        outout/${i} &
+        --nj            2                                                       \
+        --cmd           "run.pl --max-jobs-run `expr 2  / ${reply_times}`"      \
+        output/${i} &
 done
 wait
 echo 'finished making fbank' 
-
 
 echo 'start converting labels'
 for ((i=1; i<=${reply_times}; i++))
 do
     /bin/rm -rf ./labels/${i}
-    mkdir ./labels/${i}
+    mkdir       ./labels/${i}
 done
-wait
+python ./bin/conv_labels.py ${prefix} ${reply_times} 
 echo 'finish converting labels'
 
 
@@ -101,14 +120,14 @@ for ((i=1; i<=${reply_times}; i++))
 do
     if [ ${use_final_fml} == true ]
     then
-        ./bin/hr-combine-ali-feats                                                                  \
-            "ark:gunzip -c ./labels/${i}/ali.*.gz|ali-to-pdf ./labels/final.mdl ark:- ark,t:-|"     \
-            scp:output/${i}/feats.scp ark,t:- ark,t:- 2>stderr_${i}.log |                           \
+        ./bin/hr-combine-ali-feats                                                                          \
+            'ark:gunzip -c ./labels/'${i}'/ali.*.gz | ./bin/ali-to-pdf ./labels/final.mdl ark:- ark,t:-|'   \
+            scp:output/${i}/feats.scp ark,t:- ark,t:- 2>log/kaldi2mxnet_stderr_${i}.log |                   \
             ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}/${prefix}${i}_ & 
     else
-        ./bin/hr-combine-ali-feats                                                                  \
-            "ark:gunzip -c ./labels/${i}/ali.*.gz|"                                                 \
-            scp:output/${i}/feats.scp ark,t:- ark,t:- 2>stderr_${i}.log |                           \
+        ./bin/hr-combine-ali-feats                                                                          \
+            'ark:gunzip -c ./labels/'${i}'/ali.*.gz|'                                                       \
+            scp:output/${i}/feats.scp ark,t:- ark,t:- 2>log/kaldi2mxnet_stderr_${i}.log |                   \
             ./bin/prepare_mxfeature_from_kaldi_key.py - 5000 ${dest_psth}/${prefix}${i}_ & 
     fi
 

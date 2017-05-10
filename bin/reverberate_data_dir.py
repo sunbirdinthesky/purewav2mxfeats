@@ -302,7 +302,7 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
 # E.g. GetNewId("swb0035", prefix="rvb", copy=1) returns a string "rvb1_swb0035"
 def GetNewId(id, prefix=None, copy=0):
     if prefix is not None:
-        new_id = prefix + str(copy) + "_" + id
+        new_id = prefix  + id
     else:
         new_id = id
 

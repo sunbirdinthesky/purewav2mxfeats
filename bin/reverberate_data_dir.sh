@@ -44,22 +44,23 @@ mkdir -p $dest_dir
 
 noise_file=$impnoise_dir/noise_list
 rir_file=$impnoise_dir/rir_list
-python ./reverberate_data_dir.py --rir-set-parameters $rir_file \
-    --noise-set-parameters $noise_file \
-    --num-replications $num_replications \
-    --foreground-snrs $foreground_snrs \
-    --background-snrs $background_snrs \
-    --prefix $key_prefix \
-    --speech-rvb-probability $speech_rvb_prob \
-    --pointsource-noise-addition-probability $pointsource_noise_addition_prob \
-    --isotropic-noise-addition-probability $isotropic_noise_additon_prob \
-    --rir-smoothing-weight $rir_smoothing_weight \
-    --noise-smoothing-weight $noise_smoothing_weight \
-    --max-noises-per-minute $max_noise_per_minute \
-    --random-seed $random_seed \
-    --shift-output true \
-    --source-sampling-rate $source_sampling_rate \
-    --include-original-data $include_original_data \
+python ./bin/reverberate_data_dir.py                    \
+    --rir-set-parameters        $rir_file               \
+    --noise-set-parameters      $noise_file             \
+    --num-replications          $num_replications       \
+    --foreground-snrs           $foreground_snrs        \
+    --background-snrs           $background_snrs        \
+    --prefix                    $key_prefix             \
+    --speech-rvb-probability    $speech_rvb_prob        \
+    --rir-smoothing-weight      $rir_smoothing_weight   \
+    --noise-smoothing-weight    $noise_smoothing_weight \
+    --max-noises-per-minute     $max_noise_per_minute   \
+    --random-seed               $random_seed            \
+    --shift-output              true                    \
+    --source-sampling-rate      $source_sampling_rate   \
+    --include-original-data     $include_original_data  \
+    --pointsource-noise-addition-probability    $pointsource_noise_addition_prob    \
+    --isotropic-noise-addition-probability      $isotropic_noise_additon_prob       \
     $src_dir $dest_dir
 
 echo "Successfully generated corrupted data and stored it in $dest_dir." && exit 0;

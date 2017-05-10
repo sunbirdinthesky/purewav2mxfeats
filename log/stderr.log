@@ -1,0 +1,2 @@
+./bin/hr-combine-ali-feats 'ark:gunzip -c ../labels/ali.*.gz|./bin/ali-to-pdf ../labels/final.mdl ark:- ark,t:-|' scp:../multicond-train-rev/output/feats.scp ark,t:- ark,t:- 
+./bin/ali-to-pdf ../labels/final.mdl ark:- ark,t:- 

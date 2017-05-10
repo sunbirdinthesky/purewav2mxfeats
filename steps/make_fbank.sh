@@ -15,14 +15,14 @@ compress=true
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
-. parse_options.sh || exit 1;
+. ./utils/parse_options.sh || exit 1;
 
 if [ $# -lt 1 ] || [ $# -gt 3 ]; then
    echo "Usage: $0 [options] <data-dir> [<log-dir> [<fbank-dir>] ]";
    echo "e.g.: $0 data/train exp/make_fbank/train mfcc"
    echo "Note: <log-dir> defaults to <data-dir>/log, and <fbank-dir> defaults to <data-dir>/data"
    echo "Options: "
-   echo "  --fbank-config <config-file>                     # config passed to compute-fbank-feats "
+   echo "  --fbank-config <config-file>                     # config passed to ./bin/compute-fbank-feats "
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
@@ -95,8 +95,8 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_fbank_${name}.JOB.log \
     extract-segments scp,p:$scp $logdir/segments.JOB ark:- \| \
-    compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config ark:- ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    ./bin/compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config ark:- ark:- \| \
+    ./bin/copy-feats --compress=$compress ark:- \
      ark,scp:$fbankdir/raw_fbank_$name.JOB.ark,$fbankdir/raw_fbank_$name.JOB.scp \
      || exit 1;
 
@@ -110,8 +110,8 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
 
   $cmd JOB=1:$nj $logdir/make_fbank_${name}.JOB.log \
-    compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config scp,p:$logdir/wav.JOB.scp ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    ./bin/compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config scp,p:$logdir/wav.JOB.scp ark:- \| \
+    ./bin/copy-feats --compress=$compress ark:- \
      ark,scp:$fbankdir/raw_fbank_$name.JOB.ark,$fbankdir/raw_fbank_$name.JOB.scp \
      || exit 1;
 

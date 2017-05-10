@@ -1,0 +1,14 @@
+./bin/hr-combine-ali-feats 'ark:gunzip -c ./labels/1/ali.*.gz|ali-to-pdf ./labels/final.mdl ark:- ark,t:-|' scp:output/1/feats.scp ark,t:- ark,t:- 
+ali-to-pdf ./labels/final.mdl ark:- ark,t:- 
+LOG (ali-to-pdf[5.1.57~1-0157]:main():ali-to-pdf.cc:68) Converted 10557 alignments to pdf sequences.
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300001, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300002, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300004, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300005, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300006, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300007, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300008, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300010, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300013, missing targets
+WARNING (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:65) test1_000300_000300014, missing targets
+LOG (hr-combine-ali-feats:main():hr-combine-ali-feats.cc:73) Converted 10 alignments, 10 with no targets.

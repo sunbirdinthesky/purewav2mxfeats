@@ -60,24 +60,22 @@ if __name__ == '__main__':
         try:
             index = 0
             if sys.argv[3][len(sys.argv[3])-1] == '/':
-                index = sys.argv[3][:-1].rindex('/')
-                sys.argv[3] = './tmp'
+                hdfs_path = sys.argv[3]
+                sys.argv[3] = './tmp/'
             else:
                 index = sys.argv[3].rindex('/')
-                sys.argv[3] = './tmp' + sys.argv[3][:index]
-            hdfs_path = sys.argv[3][:index]
+                hdfs_path = sys.argv[3][:index+1]
+                sys.argv[3] = './tmp' + sys.argv[3][index:]
 
         except:
             print "error: bad hdfs path"
-            sys.exit(1)
+            sys.exit(1)            
         child = subprocess.Popen("hdfs dfs -ls " + hdfs_path, shell = True)
         if child.wait() != 0:
             print "error: hdfs dest dir not found"
             sys.exit(1)
-
-    print hdfs_path
-    print sys.argv[3]
-    sys.exit(0)
+    print "hdfs path =", hdfs_path
+    print "local path =", sys.argv[3]
 
     num_sentence_per_block = int(sys.argv[2])
     file_key = sys.argv[3]
